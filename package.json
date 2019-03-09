@@ -1,0 +1,17 @@
+{
+  "name": "wordpress-to-contentful",
+  "version": "0.0.1",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "contentful-cli": "^0.20.0",
+    "dotenv": "^6.2.0",
+    "execa": "^1.0.0",
+    "fs-extra": "^7.0.1",
+    "listr": "^0.14.3",
+    "node-fetch": "^2.3.0"
+  }
+}
