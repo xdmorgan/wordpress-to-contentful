@@ -1,11 +1,6 @@
 const fs = require("fs-extra");
-const path = require("path");
+const { BUILD_DIR } = require("../util");
 
-const OUT_DIR = "dist";
-
-const clean = async () => {
-  const out = path.join(process.cwd(), OUT_DIR);
-  return fs.emptyDir(out);
-};
+const clean = async () => fs.emptyDir(BUILD_DIR);
 
 module.exports = clean;

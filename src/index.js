@@ -5,17 +5,18 @@ const Listr = require("listr");
 
 const testConfig = require("./setup/test-config");
 const cleanDist = require("./setup/clean-dist");
-const downloadUsers = require("./wordpress/download-users");
-const downloadPosts = require("./wordpress/download-posts");
-const transformPosts = require("./wordpress/transform-posts");
+const downloadUsers = require("./wordpress/user-download");
+const downloadPosts = require("./wordpress/post-download");
+const transformPosts = require("./wordpress/post-transform");
+const createAssetList = require("./wordpress/create-asset-list");
 
 const tasks = new Listr([
   {
-    title: "Test Environment Config",
+    title: "Test environment config",
     task: () => testConfig()
   },
   {
-    title: "Clean Destination Folder",
+    title: "Clean destination folder",
     task: () => cleanDist()
   },
   // {
@@ -43,7 +44,19 @@ const tasks = new Listr([
         }
       ]);
     }
+  },
+  {
+    title: "Create list of assets",
+    task: () => {
+      return new Listr([
+        {
+          title: "Request featured image data and condense post assets",
+          task: () => createAssetList()
+        }
+      ]);
+    }
   }
+  // list of links (for redirects)
 ]);
 
 tasks.run().catch(err => console.error(err));
