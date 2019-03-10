@@ -10,6 +10,7 @@ const POST_DIR_ORIGINALS = path.join(BUILD_DIR, "posts-original-by-page");
 const POST_DIR_TRANSFORMED = path.join(BUILD_DIR, "posts-transformed");
 const USER_DIR_ORIGINALS = path.join(BUILD_DIR, "users-original");
 const ASSET_DIR_LIST = path.join(BUILD_DIR, "list-of-assets");
+const REDIRECTS_DIR = path.join(BUILD_DIR, "redirects");
 
 // Awaitable globz
 const findByGlob = (pattern = "", opts = {}) =>
@@ -25,5 +26,6 @@ module.exports = {
   POST_DIR_TRANSFORMED,
   USER_DIR_ORIGINALS,
   ASSET_DIR_LIST,
+  REDIRECTS_DIR,
   findByGlob
 };

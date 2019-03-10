@@ -4,6 +4,7 @@ const { Observable } = require("rxjs");
 const {
   POST_DIR_ORIGINALS,
   POST_DIR_TRANSFORMED,
+  REDIRECTS_DIR,
   MOCK_OBSERVER,
   findByGlob
 } = require("../util");
@@ -51,32 +52,55 @@ const transform = post => {
   return [post.slug, extractBodyImages(post)];
 };
 
-const write = (name, data) =>
+const writePost = (name, data) =>
   fs.writeJson(path.join(POST_DIR_TRANSFORMED, `${name}.json`), data, {
     spaces: 2
   });
 
+const postLinkToRedirectSource = (link, base = process.env.REDIRECT_BASE_URL) =>
+  link.replace(base, "");
+const postSlugToRedirectDestination = slug => `/blog/${slug}`;
+const formatAsRedirect = ({ link, slug }) =>
+  `${postLinkToRedirectSource(link)}     ${postSlugToRedirectDestination(
+    slug
+  )}`;
+
+const writeRedirects = rdrx => {
+  const txt = rdrx.map(formatAsRedirect).join("\n");
+  return fs.writeFile(path.join(REDIRECTS_DIR, `posts`), txt);
+};
+
 const transformByPage = async (observer = MOCK_OBSERVER) => {
   // get paginated raw posts from directory created in previous step
   await fs.ensureDir(POST_DIR_TRANSFORMED);
+  await fs.ensureDir(REDIRECTS_DIR);
   const files = await findByGlob("*.json", { cwd: POST_DIR_ORIGINALS });
   observer.next(`Found ${files.length} pages of posts`);
-  // create a queue to process
-  const queue = [...files];
-  let count = 0;
+
+  const queue = [...files]; // create a queue to process
+  const redirects = []; // create list of from/to redirects
+  let count = 0; // progress indicator
   while (queue.length) {
     const file = queue.shift();
     const page = await fs.readJson(path.join(POST_DIR_ORIGINALS, file));
     while (page.length) {
+      // grab post off the page stack
       const post = page.shift();
+      // increment progress and show update
+      count += 1;
+      observer.next(`Processing: ${count} of ${queue.length}`);
       // transform the wordpress post into the expected format
       const [name, data] = transform(post);
-      observer.next(`Processing: ${name}`);
+      // save relevant information for redirects
+      const { link, slug } = data;
+      redirects.push({ link, slug });
       // save processed post by slug for later
-      await write(name, data);
-      count += 1;
+      await writePost(name, data);
     }
   }
+
+  await writeRedirects(redirects);
+
   observer.complete(`Successfully tranfsormed ${count} posts`);
 };
 
