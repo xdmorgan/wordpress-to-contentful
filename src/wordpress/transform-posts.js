@@ -3,8 +3,8 @@ const path = require("path");
 const { Observable } = require("rxjs");
 const glob = require("glob");
 
-const INPUT_DIR = path.join(process.cwd(), "dist", "raw-json-by-page");
-const OUTPUT_DIR = path.join(process.cwd(), "dist", "posts-as-json");
+const INPUT_DIR = path.join(process.cwd(), "dist", "posts-raw-by-page");
+const OUTPUT_DIR = path.join(process.cwd(), "dist", "posts-transformed");
 
 const find = (pattern = "", opts = {}) =>
   new Promise((resolve, reject) => {
