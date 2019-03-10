@@ -5,6 +5,7 @@ const Listr = require("listr");
 
 const testConfig = require("./setup/test-config");
 const cleanDist = require("./setup/clean-dist");
+const downloadUsers = require("./wordpress/download-users");
 const downloadPosts = require("./wordpress/download-posts");
 const transformPosts = require("./wordpress/transform-posts");
 
@@ -17,6 +18,17 @@ const tasks = new Listr([
     title: "Clean Destination Folder",
     task: () => cleanDist()
   },
+  // {
+  //   title: "Get WordPress Users",
+  //   task: () => {
+  //     return new Listr([
+  //       {
+  //         title: "Download raw JSON",
+  //         task: () => downloadUsers()
+  //       }
+  //     ]);
+  //   }
+  // },
   {
     title: "Get WordPress Posts",
     task: () => {
