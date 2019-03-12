@@ -56,7 +56,6 @@ const tasks = new Listr([
       ]);
     }
   }
-  // list of links (for redirects)
 ]);
 
 tasks.run().catch(err => console.error(err));
