@@ -1,5 +1,18 @@
 const fs = require("fs-extra");
 const path = require("path");
+const html2plaintext = require("html2plaintext");
+const TurndownService = require("turndown");
+const TURNDOWN_OPTS = {
+  headingStyle: "atx",
+  hr: "---",
+  bulletListMarker: "*",
+  codeBlockStyle: "fenced",
+  emDelimiter: "*",
+  strongDelimiter: "__",
+  linkStyle: "inlined",
+  linkReferenceStyle: "full"
+};
+const turndownService = new TurndownService(TURNDOWN_OPTS);
 const { Observable } = require("rxjs");
 const {
   POST_DIR_ORIGINALS,
@@ -10,7 +23,7 @@ const {
   findByGlob
 } = require("../util");
 
-const extractBodyImages = post => {
+const extractImages = post => {
   const regex = /<img.*?src="(.*?)"[\s\S]*?alt="(.*?)"/g;
   post.bodyImages = [];
   while ((foundImage = regex.exec(post.body))) {
@@ -25,11 +38,20 @@ const extractBodyImages = post => {
   return post;
 };
 
+function convertToMarkdown(post) {
+  return {
+    ...post,
+    body: turndownService.turndown(post.body)
+  };
+}
+
 const transform = post => {
   delete post._links;
   delete post.guid;
+  // rename and strip formatting from excerpt, then remove
+  post.description = html2plaintext(post.excerpt.rendered || "");
   delete post.excerpt;
-  delete post.author; // TODO: Get authors, pull name, look for match in Contentful — Else fallback.
+  // delete post.author;
   delete post.comment_status;
   delete post.ping_status;
   delete post.template;
@@ -46,11 +68,11 @@ const transform = post => {
   delete post.sticky;
   post.body = post.content.rendered;
   delete post.content;
-  post.title = post.title.rendered;
+  post.title = html2plaintext(post.title.rendered); // decode entities
   post.slug = post.slug;
   post.category = post.categories[0];
   delete post.categories;
-  return [post.slug, extractBodyImages(post)];
+  return [post.slug, convertToMarkdown(extractImages(post))];
 };
 
 const writePost = (name, data) =>
@@ -89,7 +111,7 @@ const transformByPage = async (observer = MOCK_OBSERVER) => {
       const post = page.shift();
       // increment progress and show update
       count += 1;
-      observer.next(`Processing: ${count} of ${queue.length}`);
+      observer.next(`Processing: ${count} of ${files.length}`);
       // transform the wordpress post into the expected format
       const [name, data] = transform(post);
       // save relevant information for redirects

@@ -10,11 +10,12 @@ const {
 } = require("../util");
 
 // Do not exceed ten, delay is an important factor too
-// 9 processes and 1s delay seem to make sense, for 10p/s
-const PARALELLIZE_IT = 9;
+// 8 processes and 1s delay seem to make sense, for 10p/s
+const PROCESSES = 8;
 // add delays to try and avoid API request limits in
 // the parallel processes
 const API_DELAY_DUR = 1000;
+const UPLOAD_TIMEOUT = 60000;
 // out dests
 const DONE_FILE_PATH = path.join(ASSET_DIR_LIST, "done.json");
 const FAILED_FILE_PATH = path.join(ASSET_DIR_LIST, "failed.json");
@@ -44,18 +45,21 @@ const uploadAssets = (client, assets, observer = MOCK_OBSERVER) =>
     const upload = asset => {
       const identifier = asset.link;
       return (
-        new Promise(async (resolve, reject) => {
-          processing.add(identifier);
-          proglog();
-          await delay();
-          const created = await client.createAsset(transformForUpload(asset));
-          await delay();
-          const processed = await created.processForAllLocales();
-          await delay();
-          const published = await processed.publish();
-          await delay();
-          resolve(published);
-        })
+        Promise.race([
+          new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
+          new Promise(async resolve => {
+            processing.add(identifier);
+            proglog();
+            await delay();
+            const created = await client.createAsset(transformForUpload(asset));
+            await delay();
+            const processed = await created.processForAllLocales();
+            await delay();
+            const published = await processed.publish();
+            await delay();
+            resolve(published);
+          })
+        ])
           // happy path
           .then(published => {
             done.push(transformForSaving(asset, published));
@@ -81,7 +85,7 @@ const uploadAssets = (client, assets, observer = MOCK_OBSERVER) =>
     // safely handle cases where there are less total
     // items than the amount of parallel processes
     let count = 0;
-    while (queue.length && count < PARALELLIZE_IT) {
+    while (queue.length && count < PROCESSES) {
       upload(queue.shift());
       count += 1;
     }

@@ -6,7 +6,8 @@ const {
   CONTENTFUL_CMA_TOKEN,
   CONTENTFUL_ENV_NAME,
   CONTENTFUL_SPACE_ID,
-  CONTENTFUL_LOCALE
+  CONTENTFUL_LOCALE,
+  CONTENTFUL_FALLBACK_USER_ID
 } = require("../util");
 
 const WP_ERR_MSG = `WordPress unreachable at ${WP_API_URL}, check env config and internet connection`;
@@ -32,6 +33,9 @@ async function config() {
   }
   if (!CONTENTFUL_LOCALE) {
     throw new Error(CFUL_ERR_BASE + "CONTENTFUL_LOCALE");
+  }
+  if (!CONTENTFUL_FALLBACK_USER_ID) {
+    throw new Error(CFUL_ERR_BASE + "CONTENTFUL_FALLBACK_USER_ID");
   }
 }
 
