@@ -7,7 +7,9 @@
     "start": "node src"
   },
   "dependencies": {
+    "contentful": "^7.4.1",
     "contentful-cli": "^0.20.0",
+    "contentful-management": "^5.7.0",
     "dotenv": "^6.2.0",
     "execa": "^1.0.0",
     "fs-extra": "^7.0.1",

@@ -564,7 +564,7 @@ contentful-import@^7.3.0:
     moment "^2.22.2"
     yargs "^12.0.1"
 
-contentful-management@^5.3.0:
+contentful-management@^5.3.0, contentful-management@^5.7.0:
   version "5.7.0"
   resolved "https://registry.yarnpkg.com/contentful-management/-/contentful-management-5.7.0.tgz#ea6045c519bae1d06af641ca58a2a9cfa4b39266"
   integrity sha512-hXsu9k/nMkSI2OV0zCyVB9thFcRiz2wYesKbMbFlINuAKUbVeOc4DZJQ5/anrb7X4Bin867VHZ3XtvX0+oIcPg==
@@ -602,13 +602,31 @@ contentful-migration@^0.16.3:
     lodash "^4.17.4"
     yargs "^8.0.2"
 
-contentful-sdk-core@^6.0.1, contentful-sdk-core@^6.3.0:
+contentful-resolve-response@^1.1.4:
+  version "1.1.4"
+  resolved "https://registry.yarnpkg.com/contentful-resolve-response/-/contentful-resolve-response-1.1.4.tgz#9eb656876eecb2cd00444f0adf26bd91a5ec1992"
+  integrity sha512-oFq6n6zjbiwD9/7mBa8YHPwvPM0B0D4uOgg1n/rVzpQPhCrzeIixNj6fbJAbDiJt05rZqxiY3K1Db7pPRhRaZw==
+  dependencies:
+    lodash "^4.17.4"
+
+contentful-sdk-core@^6.0.1, contentful-sdk-core@^6.2.1, contentful-sdk-core@^6.3.0:
   version "6.3.0"
   resolved "https://registry.yarnpkg.com/contentful-sdk-core/-/contentful-sdk-core-6.3.0.tgz#f648ccd11eb50ec47ba4ab580b3a14217bccc293"
   integrity sha512-PbZn4OZO/iBk4OjEHir6pX6p4c/q3lwQ3M9pLeibaoiwT8fd3JRfeL4tL0L8M2d9mS8y3g2FRDWmBAI2+0Xlcg==
   dependencies:
     lodash "^4.17.10"
     qs "^6.5.2"
+
+contentful@^7.4.1:
+  version "7.4.1"
+  resolved "https://registry.yarnpkg.com/contentful/-/contentful-7.4.1.tgz#06325e0b222237aa7aa93f9f0b81a331a5eefc1b"
+  integrity sha512-cPf0xyx4NNwp+TwYoNMD3lf6wRZOcJAoJmal6RZbmK4bnoqeZ3GZg7RcRy4Vlgah8KenWn8AKQ7cXeXbRoSbIg==
+  dependencies:
+    "@contentful/axios" "^0.18.0"
+    contentful-resolve-response "^1.1.4"
+    contentful-sdk-core "^6.2.1"
+    json-stringify-safe "^5.0.1"
+    lodash "^4.17.11"
 
 core-util-is@1.0.2, core-util-is@~1.0.0:
   version "1.0.2"
@@ -1423,7 +1441,7 @@ json-schema@0.2.3:
   resolved "https://registry.yarnpkg.com/json-schema/-/json-schema-0.2.3.tgz#b480c892e59a2f05954ce727bd3f2a4e882f9e13"
   integrity sha1-tIDIkuWaLwWVTOcnvT8qTogvnhM=
 
-json-stringify-safe@~5.0.1:
+json-stringify-safe@^5.0.1, json-stringify-safe@~5.0.1:
   version "5.0.1"
   resolved "https://registry.yarnpkg.com/json-stringify-safe/-/json-stringify-safe-5.0.1.tgz#1296a2d58fd45f19a0f6ce01d65701e2c735b6eb"
   integrity sha1-Epai1Y/UXxmg9s4B1lcB4sc1tus=
