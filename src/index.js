@@ -1,5 +1,3 @@
-require("dotenv").config();
-
 const execa = require("execa");
 const Listr = require("listr");
 
@@ -9,18 +7,27 @@ const downloadUsers = require("./wordpress/user-download");
 const downloadPosts = require("./wordpress/post-download");
 const transformPosts = require("./wordpress/post-transform");
 const createAssetList = require("./wordpress/create-asset-list");
+const createClient = require("./contentful/create-client");
+const uploadAssets = require("./contentful/upload-assets");
 
 const tasks = new Listr([
-  {
-    title: "Test environment config",
-    task: () => testConfig()
-  },
-  {
-    title: "Clean destination folder",
-    task: () => cleanDist()
-  },
   // {
-  //   title: "Get WordPress Users",
+  //   title: "Setup & Pre-flight checks",
+  //   task: () => {
+  //     return new Listr([
+  //       {
+  //         title: "Check env config",
+  //         task: () => testConfig()
+  //       },
+  //       {
+  //         title: "Clean destination folder",
+  //         task: () => cleanDist()
+  //       }
+  //     ]);
+  //   }
+  // },
+  // {
+  //   title: "WordPress export: Users",
   //   task: () => {
   //     return new Listr([
   //       {
@@ -30,28 +37,36 @@ const tasks = new Listr([
   //     ]);
   //   }
   // },
+  // {
+  //   title: "WordPress export: Posts",
+  //   task: () => {
+  //     return new Listr([
+  //       {
+  //         title: "Download raw JSON",
+  //         task: () => downloadPosts()
+  //       },
+  //       {
+  //         title: "Transform into Contentful format",
+  //         task: () => transformPosts()
+  //       },
+  //       {
+  //         title: "Create list of assets",
+  //         task: () => createAssetList()
+  //       }
+  //     ]);
+  //   }
+  // },
   {
-    title: "Get WordPress Posts",
+    title: "Contentful import",
     task: () => {
       return new Listr([
         {
-          title: "Download raw JSON",
-          task: () => downloadPosts()
+          title: "Create Content Management API Client",
+          task: () => createClient()
         },
         {
-          title: "Transform into Contentful format",
-          task: () => transformPosts()
-        }
-      ]);
-    }
-  },
-  {
-    title: "Create list of assets",
-    task: () => {
-      return new Listr([
-        {
-          title: "Request featured image data and condense post assets",
-          task: () => createAssetList()
+          title: "Upload assets",
+          task: () => createClient().then(uploadAssets)
         }
       ]);
     }

@@ -6,6 +6,7 @@ const {
   ASSET_DIR_LIST,
   POST_DIR_TRANSFORMED,
   MOCK_OBSERVER,
+  WP_API_URL,
   findByGlob
 } = require("../util");
 
@@ -57,5 +58,4 @@ const assets = async (url, observer = MOCK_OBSERVER) => {
   observer.complete();
 };
 
-module.exports = () =>
-  new Observable(observer => assets(process.env.API_URL, observer));
+module.exports = () => new Observable(observer => assets(WP_API_URL, observer));

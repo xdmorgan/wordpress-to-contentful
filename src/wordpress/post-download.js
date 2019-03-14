@@ -2,7 +2,7 @@ const fetch = require("node-fetch");
 const fs = require("fs-extra");
 const path = require("path");
 const { Observable } = require("rxjs");
-const { POST_DIR_ORIGINALS, MOCK_OBSERVER } = require("../util");
+const { POST_DIR_ORIGINALS, MOCK_OBSERVER, WP_API_URL } = require("../util");
 
 const urlForPage = (url, page) => `${url}/posts?page=${page}`;
 
@@ -30,5 +30,4 @@ const posts = async (url, observer = MOCK_OBSERVER) => {
   postsByPage();
 };
 
-module.exports = () =>
-  new Observable(observer => posts(process.env.API_URL, observer));
+module.exports = () => new Observable(observer => posts(WP_API_URL, observer));

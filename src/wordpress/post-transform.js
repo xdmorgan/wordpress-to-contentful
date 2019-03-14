@@ -5,6 +5,7 @@ const {
   POST_DIR_ORIGINALS,
   POST_DIR_TRANSFORMED,
   REDIRECTS_DIR,
+  REDIRECT_BASE_URL,
   MOCK_OBSERVER,
   findByGlob
 } = require("../util");
@@ -57,7 +58,7 @@ const writePost = (name, data) =>
     spaces: 2
   });
 
-const postLinkToRedirectSource = (link, base = process.env.REDIRECT_BASE_URL) =>
+const postLinkToRedirectSource = (link, base = REDIRECT_BASE_URL) =>
   link.replace(base, "");
 const postSlugToRedirectDestination = slug => `/blog/${slug}`;
 const formatAsRedirect = ({ link, slug }) =>

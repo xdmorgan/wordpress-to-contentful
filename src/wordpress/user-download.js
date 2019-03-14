@@ -2,7 +2,7 @@ const fetch = require("node-fetch");
 const fs = require("fs-extra");
 const path = require("path");
 const { Observable } = require("rxjs");
-const { USER_DIR_ORIGINALS, MOCK_OBSERVER } = require("../util");
+const { USER_DIR_ORIGINALS, MOCK_OBSERVER, WP_API_URL } = require("../util");
 
 const users = async (url, observer = MOCK_OBSERVER) => {
   await fs.ensureDir(USER_DIR_ORIGINALS);
@@ -18,5 +18,4 @@ const users = async (url, observer = MOCK_OBSERVER) => {
   throw new Error(response);
 };
 
-module.exports = () =>
-  new Observable(observer => users(process.env.API_URL, observer));
+module.exports = () => new Observable(observer => users(WP_API_URL, observer));
