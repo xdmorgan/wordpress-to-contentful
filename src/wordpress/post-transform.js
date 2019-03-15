@@ -100,7 +100,7 @@ const transformByPage = async (observer = MOCK_OBSERVER) => {
   const files = await findByGlob("*.json", { cwd: POST_DIR_ORIGINALS });
   observer.next(`Found ${files.length} pages of posts`);
 
-  const queue = [...files]; // create a queue to process
+  const queue = [...files].sort(); // create a queue to process
   const redirects = []; // create list of from/to redirects
   let count = 0; // progress indicator
   while (queue.length) {
@@ -111,7 +111,7 @@ const transformByPage = async (observer = MOCK_OBSERVER) => {
       const post = page.shift();
       // increment progress and show update
       count += 1;
-      observer.next(`Processing: ${count} of ${files.length}`);
+      observer.next(`Processing post ${count}`);
       // transform the wordpress post into the expected format
       const [name, data] = transform(post);
       // save relevant information for redirects

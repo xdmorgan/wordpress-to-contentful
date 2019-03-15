@@ -10,6 +10,7 @@ const MOCK_OBSERVER = { next: console.log, complete: console.success };
 const BUILD_DIR = path.join(process.cwd(), "dist");
 const POST_DIR_ORIGINALS = path.join(BUILD_DIR, "posts-original-by-page");
 const POST_DIR_TRANSFORMED = path.join(BUILD_DIR, "posts-transformed");
+const POST_DIR_CREATED = path.join(BUILD_DIR, "posts-created");
 const USER_DIR_ORIGINALS = path.join(BUILD_DIR, "users-original");
 const USER_DIR_TRANSFORMED = path.join(BUILD_DIR, "users-transformed");
 const ASSET_DIR_LIST = path.join(BUILD_DIR, "list-of-assets");
@@ -57,6 +58,7 @@ module.exports = {
   BUILD_DIR,
   POST_DIR_ORIGINALS,
   POST_DIR_TRANSFORMED,
+  POST_DIR_CREATED,
   USER_DIR_ORIGINALS,
   ASSET_DIR_LIST,
   REDIRECTS_DIR,

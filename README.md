@@ -16,3 +16,7 @@ Migrations lvl 💯
 ### WP Users route
 
 - Should not be disabled
+
+## Usage
+
+Good idea to test in a disposable environment before running against master.

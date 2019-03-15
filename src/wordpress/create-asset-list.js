@@ -38,7 +38,7 @@ const assets = async (url, observer = MOCK_OBSERVER) => {
   await fs.ensureDir(ASSET_DIR_LIST);
   const files = await findByGlob("*.json", { cwd: POST_DIR_TRANSFORMED });
   observer.next(`Processing ${files.length} posts`);
-  const queue = [...files];
+  const queue = [...files].sort();
   let list = [];
   while (queue.length) {
     const file = queue.shift();

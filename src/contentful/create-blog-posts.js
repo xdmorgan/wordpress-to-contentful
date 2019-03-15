@@ -5,6 +5,7 @@ const {
   MOCK_OBSERVER,
   CONTENTFUL_LOCALE,
   POST_DIR_TRANSFORMED,
+  POST_DIR_CREATED,
   USER_DIR_TRANSFORMED,
   CONTENTFUL_FALLBACK_USER_ID,
   ASSET_DIR_LIST,
@@ -22,6 +23,7 @@ const UPLOAD_TIMEOUT = 60000;
 const CONTENT_TYPE = "blogPost";
 const DONE_FILE_PATH = path.join(ASSET_DIR_LIST, "done.json");
 const AUTHOR_FILE_PATH = path.join(USER_DIR_TRANSFORMED, "authors.json");
+const RESULTS_PATH = path.join(POST_DIR_CREATED, "posts.json");
 
 const delay = (dur = API_DELAY_DUR) =>
   new Promise(resolve => setTimeout(resolve, dur));
@@ -38,7 +40,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
 
     observer.next(`Preparing to create ${queue.length} posts`);
 
-    const proglog = () => {
+    const logProgress = () => {
       observer.next(
         `Remaining: ${queue.length} (${processing.size} uploading, ${
           done.length
@@ -48,12 +50,23 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
 
     const createBlogPost = post => {
       const identifier = post.slug;
+      processing.add(identifier);
+      logProgress();
+
       return (
         Promise.race([
           new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
-          new Promise(async resolve => {
-            processing.add(identifier);
-            proglog();
+          new Promise(async (resolve, reject) => {
+            await delay();
+
+            const exists = await client.getEntries({
+              content_type: CONTENT_TYPE,
+              "fields.slug[in]": post.slug
+            });
+            if (exists && exists.total > 0) {
+              return reject({ error: "Post already exists", post: exists });
+            }
+
             await delay();
 
             const created = await client.createEntry(
@@ -79,7 +92,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
           // either
           .finally(() => {
             processing.delete(identifier);
-            proglog();
+            logProgress();
             // more in queue case
             if (queue.length) createBlogPost(queue.shift());
             // no more in queue, but at lesat one parallel
@@ -172,9 +185,8 @@ function createMapFromAuthors(authors) {
 }
 
 async function processBlogPosts(client, observer = MOCK_OBSERVER) {
-  const assets = await fs.readJson(DONE_FILE_PATH);
   const files = await findByGlob("*.json", { cwd: POST_DIR_TRANSFORMED });
-  const queue = [...files];
+  const queue = [...files].sort();
   const posts = [];
   while (queue.length) {
     const file = queue.shift();
@@ -182,6 +194,7 @@ async function processBlogPosts(client, observer = MOCK_OBSERVER) {
     posts.push(post);
   }
 
+  const assets = await fs.readJson(DONE_FILE_PATH);
   const authors = await fs.readJson(AUTHOR_FILE_PATH);
 
   const result = await createBlogPosts(
@@ -191,6 +204,9 @@ async function processBlogPosts(client, observer = MOCK_OBSERVER) {
     client,
     observer
   );
+
+  await fs.ensureDir(POST_DIR_CREATED);
+  await fs.writeJson(RESULTS_PATH, result, { spaces: 2 });
   return result;
 }
 
