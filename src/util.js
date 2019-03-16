@@ -10,7 +10,9 @@ const MOCK_OBSERVER = { next: console.log, complete: console.success };
 const BUILD_DIR = path.join(process.cwd(), "dist");
 const POST_DIR_ORIGINALS = path.join(BUILD_DIR, "posts-original-by-page");
 const POST_DIR_TRANSFORMED = path.join(BUILD_DIR, "posts-transformed");
+const POST_DIR_CREATED = path.join(BUILD_DIR, "posts-created");
 const USER_DIR_ORIGINALS = path.join(BUILD_DIR, "users-original");
+const USER_DIR_TRANSFORMED = path.join(BUILD_DIR, "users-transformed");
 const ASSET_DIR_LIST = path.join(BUILD_DIR, "list-of-assets");
 const REDIRECTS_DIR = path.join(BUILD_DIR, "redirects");
 const {
@@ -19,7 +21,8 @@ const {
   CONTENTFUL_CMA_TOKEN,
   CONTENTFUL_SPACE_ID,
   CONTENTFUL_ENV_NAME,
-  CONTENTFUL_LOCALE
+  CONTENTFUL_LOCALE,
+  CONTENTFUL_FALLBACK_USER_ID
 } = process.env;
 
 // Awaitable globz
@@ -35,13 +38,13 @@ const MIME_TYPES = {
   gif: "image/gif"
 };
 
-const urlToMimeType = url =>
-  MIME_TYPES[
-    url
-      .split(".")
-      .slice(-1)
-      .join("")
-  ];
+const urlToMimeType = url => {
+  const type = url
+    .split(".")
+    .slice(-1)
+    .join("");
+  return MIME_TYPES[type] ? MIME_TYPES[type] : MIME_TYPES["jpg"];
+};
 
 const trimUrlToFilename = url =>
   url
@@ -55,6 +58,7 @@ module.exports = {
   BUILD_DIR,
   POST_DIR_ORIGINALS,
   POST_DIR_TRANSFORMED,
+  POST_DIR_CREATED,
   USER_DIR_ORIGINALS,
   ASSET_DIR_LIST,
   REDIRECTS_DIR,
@@ -64,6 +68,8 @@ module.exports = {
   CONTENTFUL_SPACE_ID,
   CONTENTFUL_ENV_NAME,
   CONTENTFUL_LOCALE,
+  CONTENTFUL_FALLBACK_USER_ID,
+  USER_DIR_TRANSFORMED,
   findByGlob,
   urlToMimeType,
   trimUrlToFilename
