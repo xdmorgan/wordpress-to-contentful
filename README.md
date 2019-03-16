@@ -61,6 +61,12 @@ CONTENTFUL_FALLBACK_USER_ID="[id]"
 
 ---
 
+## 🙏 Cite
+
+Lots of inspiration from [this article](https://hoverbaum.net/2018/03/22/wordpress-to-contentful-migration/) and linked gists, it inspired the general approach and some of the of code is used directly.
+
+---
+
 ## ☑️ Goals
 
 - [ ] Replace Listr progress with Ink
