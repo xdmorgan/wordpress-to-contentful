@@ -43,16 +43,22 @@ Values required for all of the variables below, or the test config (first) task 
 ```sh
 # Base URL for API requests
 WP_API_URL="https://website.com/wp-json/wp/v2"
+
 # WP returns absolute URLS, we use relative
 REDIRECT_BASE_URL="https://website.com"
+
 # Generated in web app interface
 CONTENTFUL_CMA_TOKEN="[token]"
+
 # Go to Project's Settings > General Settings
 CONTENTFUL_SPACE_ID="[space-id]"
+
 # Sandbox environment name, or master
 CONTENTFUL_ENV_NAME="[staging]"
+
 # Default locale (in my case "en-US")
 CONTENTFUL_LOCALE="[locale]"
+
 # "Person" ID used when a match cant be found
 # comparing WP User to CF Person names (post
 # author attribution)
@@ -69,5 +75,5 @@ Lots of inspiration from [this article](https://hoverbaum.net/2018/03/22/wordpre
 
 ## ☑️ Goals
 
-- [ ] Replace Listr progress with Ink
+- [ ] Replace Listr with Ink static & dynamic logging
 - [ ] Optional, incremental steps
