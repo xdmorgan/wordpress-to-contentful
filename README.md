@@ -1,18 +1,44 @@
 # WordPress to Contentful
 
+Migrate WordPress posts to Contentful using the WP REST API and the Contentful JS SDK.
+
+- **Markdown**: Post bodies are converted to Markdown to strip out inline styles and image dimensions.
+- **Assets**: Featured and inline images will be transferred and their references in content replaced.
+- **Authors**: Script looks for CF Person names that match WP User and reassign author attribution.
+- **Date Published**: Preserved
+
+---
+
 ## 🚀 Usage
 
-1. Read Prerequisites section
+1. Prerequisites
+1. `yarn install`
 1. `yarn start`
 
 ---
 
 ## ⚠️ Prerequisites
 
+### Webhooks
+
+Make sure to temporarily disable any publish webhooks (e.g. Netlify) because this is gonna do a lot of publishing.
+
 ### Globally installed
 
 - [Yarn](https://yarnpkg.com)
 - [Contentful CLI](https://github.com/contentful/contentful-cli) (Logged in)
+
+### Contentful Content Types
+
+Assumes the following content types are already created in Contentful:
+
+#### Person: `person`
+
+For best results, create Persons with matching names so posts authors in the two systems can be matched up and attributions preserved. Otherwise, the fallback Person ID will be used.
+
+#### Blog Post: `blogPost`
+
+See fields in source
 
 ### Contentful Content Management API
 
@@ -77,3 +103,7 @@ Lots of inspiration from [this article](https://hoverbaum.net/2018/03/22/wordpre
 
 - [ ] Replace Listr with Ink static & dynamic logging
 - [ ] Optional, incremental steps
+- [ ] Multi-phase approach
+  1. Migrate content to sandbox env
+  1. Export structure/content using CF Migration CLI
+  1. Use CF tooling to migrate content into master
