@@ -43,8 +43,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
     const done = [];
     const failed = [];
     let hero,
-      body,
-      author = {};
+      body = {};
 
     const logProgress = () => {
       observer.next(
@@ -88,7 +87,8 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
         }),
       ]).catch((error) => {
         // TODO: retry failed
-        failed.push({ post, error });
+        if (error.hero.items.length) return error.hero.items[0];
+        else failed.push({ post, error });
       });
     };
 
@@ -101,7 +101,9 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
               name: { [CONTENTFUL_LOCALE]: post.title },
               content: {
                 [CONTENTFUL_LOCALE]: await richTextFromMarkdown(
-                  htmlToMarkdown(replaceInlineImageUrls(post.body, inlineMap))
+                  await htmlToMarkdown(
+                    replaceInlineImageUrls(post.body, inlineMap)
+                  )
                 ),
               },
             },
@@ -121,11 +123,10 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
     const createBlogPost = async (post) => {
       const identifier = post.slug;
       processing.add(identifier);
-      // logProgress();
+      logProgress();
 
       hero = await createHero(post);
       body = await createBody(post);
-      // author = await createAuthor(post);
 
       return (
         Promise.race([
@@ -149,7 +150,6 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
               transform(post, inlineMap, heroMap, authorMap, {
                 hero,
                 body,
-                author,
               })
             );
             await delay();
@@ -192,7 +192,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
 };
 
 function transform(post, inlineMap, heroMap, authorMap, modules) {
-  const { hero, body, author } = modules;
+  const { hero, body } = modules;
 
   return {
     fields: {
@@ -207,13 +207,21 @@ function transform(post, inlineMap, heroMap, authorMap, modules) {
       },
       modules: {
         [CONTENTFUL_LOCALE]: [
-          { sys: { type: "Link", linkType: "Entry", id: hero.id } },
-          { sys: { type: "Link", linkType: "Entry", id: body.id } },
-          { sys: { type: "Link", linkType: "Entry", id: author.id } },
+          { sys: { type: "Link", linkType: "Entry", id: hero.sys.id } },
+          { sys: { type: "Link", linkType: "Entry", id: body.sys.id } },
+          {
+            sys: {
+              type: "Link",
+              linkType: "Entry",
+              id: authorMap.has(post.author)
+                ? authorMap.get(post.author)
+                : CONTENTFUL_FALLBACK_USER_ID,
+            },
+          },
         ],
       },
-      publishDate: {
-        [CONTENTFUL_LOCALE]: post.publishDate,
+      container: {
+        [CONTENTFUL_LOCALE]: true,
       },
       // heroImage: {
       //   [CONTENTFUL_LOCALE]: {
@@ -297,7 +305,7 @@ module.exports = (client) => {
 };
 
 // debug
-(async () => {
-  const client = await require("./create-client")();
-  processBlogPosts(client).then(console.log);
-})();
+// (async () => {
+//   const client = await require("./create-client")();
+//   processBlogPosts(client).then(console.log);
+// })();
