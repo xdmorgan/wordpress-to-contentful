@@ -16,9 +16,10 @@ const posts = async (url, observer = MOCK_OBSERVER) => {
     // Save data and move on to the next page
     if (status === 200) {
       const json = await response.json();
-      const dest = path.join(POST_DIR_ORIGINALS, `posts-${page}.json`);
-      await fs.writeJson(dest, json);
-      return postsByPage(page + 1);
+      console.log(json);
+      // const dest = path.join(POST_DIR_ORIGINALS, `posts-${page}.json`);
+      // await fs.writeJson(dest, json);
+      // return postsByPage(page + 1);
     }
     // if it was working before, but it isn't anymore
     // we've reached the end of the paginated list
@@ -30,4 +31,9 @@ const posts = async (url, observer = MOCK_OBSERVER) => {
   postsByPage();
 };
 
-module.exports = () => new Observable(observer => posts(WP_API_URL, observer));
+module.exports = () =>
+  new Observable((observer) => posts(WP_API_URL, observer));
+
+// (async () => {
+//   posts(WP_API_URL).then(console.log);
+// })();
