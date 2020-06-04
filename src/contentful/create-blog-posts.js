@@ -11,7 +11,7 @@ const {
   CONTENTFUL_FALLBACK_USER_ID,
   ASSET_DIR_LIST,
   findByGlob,
-  htmlToMarkdown,
+  htmlToRichText,
 } = require("../util");
 
 // Do not exceed ten, delay is an important factor too
@@ -25,6 +25,8 @@ const UPLOAD_TIMEOUT = 60000;
 const CONTENT_TYPE = "modularPage";
 const HERO_TYPE = "contentHeroModule";
 const BODY_TYPE = "richTextModule";
+const PRESS_RELEASE_TYPE = "richTextModule";
+const NOTES_TYPE = "richTextModule";
 const AUTHOR_TYPE = "author";
 const DONE_FILE_PATH = path.join(ASSET_DIR_LIST, "done.json");
 const AUTHOR_FILE_PATH = path.join(USER_DIR_TRANSFORMED, "authors.json");
@@ -43,7 +45,9 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
     const done = [];
     const failed = [];
     let hero,
-      body = {};
+      body,
+      pressRelease,
+      notesToEditors = {};
 
     const logProgress = () => {
       observer.next(
@@ -100,10 +104,8 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
             fields: {
               name: { [CONTENTFUL_LOCALE]: post.title },
               content: {
-                [CONTENTFUL_LOCALE]: await richTextFromMarkdown(
-                  await htmlToMarkdown(
-                    replaceInlineImageUrls(post.body, inlineMap)
-                  )
+                [CONTENTFUL_LOCALE]: await htmlToRichText(
+                  replaceInlineImageUrls(post.body, inlineMap)
                 ),
               },
             },
@@ -120,6 +122,108 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
       });
     };
 
+    const createPressRelease = async (post) => {
+      return Promise.race([
+        new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
+        new Promise(async (resolve, reject) => {
+          const dump = await fs.readJSON(
+            path.join(process.cwd(), "src/db-convert/dump.json"),
+            "utf8"
+          );
+
+          const single = dump[post.id];
+          const {
+            press_contact,
+            phone_number,
+            mobile_number,
+            email_address,
+            twitter,
+          } = single;
+
+          const content = await htmlToRichText(`
+            <h3>FOR MORE INFORMATION</h3>
+            ${press_contact && `<p>${press_contact}</p>`}
+            ${phone_number && `<p>Phone: ${phone_number}</p>`}
+            ${mobile_number && `<p>Mobile: ${mobile_number}</p>`}
+            ${email_address && `<p>Email: ${email_address}</p>`}
+            ${twitter &&
+              `<p>Twitter: <a href="@${twitter}" target="_blank">@${
+                single.twitter
+              }</a></p>`}
+          `);
+
+          const exists = await client.getEntries({
+            content_type: PRESS_RELEASE_TYPE,
+            "fields.name[in]": `Press release - ${press_contact}`,
+          });
+
+          if (exists && exists.total) {
+            return resolve(exists.items[0]);
+          } else {
+            const created = await client.createEntry(PRESS_RELEASE_TYPE, {
+              fields: {
+                name: {
+                  [CONTENTFUL_LOCALE]: `Press release - ${press_contact}`,
+                },
+                content: {
+                  [CONTENTFUL_LOCALE]: content,
+                },
+              },
+            });
+
+            await delay();
+            const published = await created.publish();
+            await delay();
+            resolve(published);
+          }
+        }),
+      ]).catch((error) => {
+        // TODO: retry failed
+        // failed.push({ post, error });
+        console.log(error);
+      });
+    };
+
+    const createNotesToEditors = async (post) => {
+      return Promise.race([
+        new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
+        new Promise(async (resolve, reject) => {
+          const notes = await fs.readJSON(
+            path.join(process.cwd(), "src/db-convert/notestoeditors.json"),
+            "utf8"
+          );
+
+          const single = notes[post.id];
+          const { notes_to_editors } = single;
+
+          if (!notes_to_editors) {
+            reject({ error: "No notes for this post" });
+          } else {
+            const content = await htmlToRichText(`
+              <h3>Notes to editors</h3>
+              ${notesToEditors}
+            `);
+
+            const created = await client.createEntry(NOTES_TYPE, {
+              fields: {
+                name: {
+                  [CONTENTFUL_LOCALE]: `Notes to editors`,
+                },
+                content: {
+                  [CONTENTFUL_LOCALE]: content,
+                },
+              },
+            });
+
+            await delay();
+            const published = await created.publish();
+            await delay();
+            resolve(published);
+          }
+        }),
+      ]).catch(console.log);
+    };
+
     const createBlogPost = async (post) => {
       const identifier = post.slug;
       processing.add(identifier);
@@ -127,6 +231,20 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
 
       hero = await createHero(post);
       body = await createBody(post);
+      pressRelease = await createPressRelease(post);
+      notesToEditors = await createNotesToEditors(post);
+      const about = await client.getEntries({
+        content_type: "richTextModule",
+        "fields.name[in]": "About Uswitch - media centre example",
+      });
+
+      const modules = {
+        ...(hero !== undefined && { hero }),
+        ...(body !== undefined && { body }),
+        ...(pressRelease !== undefined && { pressRelease }),
+        ...(notesToEditors !== undefined && { notesToEditors }),
+        ...(about && about.total > 0 && { about: about.items[0] }),
+      };
 
       return (
         Promise.race([
@@ -147,10 +265,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
 
             const created = await client.createEntry(
               CONTENT_TYPE,
-              transform(post, inlineMap, heroMap, authorMap, {
-                hero,
-                body,
-              })
+              transform(post, inlineMap, heroMap, authorMap, modules)
             );
             await delay();
             const published = await created.publish();
@@ -192,7 +307,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
 };
 
 function transform(post, inlineMap, heroMap, authorMap, modules) {
-  const { hero, body } = modules;
+  const { hero, body, pressRelease, notesToEditors, about } = modules;
 
   return {
     fields: {
@@ -207,8 +322,20 @@ function transform(post, inlineMap, heroMap, authorMap, modules) {
       },
       modules: {
         [CONTENTFUL_LOCALE]: [
-          { sys: { type: "Link", linkType: "Entry", id: hero.sys.id } },
-          { sys: { type: "Link", linkType: "Entry", id: body.sys.id } },
+          ...(hero !== undefined
+            ? [
+                {
+                  sys: { type: "Link", linkType: "Entry", id: hero.sys.id },
+                },
+              ]
+            : []),
+          ...(body !== undefined
+            ? [
+                {
+                  sys: { type: "Link", linkType: "Entry", id: body.sys.id },
+                },
+              ]
+            : []),
           {
             sys: {
               type: "Link",
@@ -218,31 +345,40 @@ function transform(post, inlineMap, heroMap, authorMap, modules) {
                 : CONTENTFUL_FALLBACK_USER_ID,
             },
           },
+          ...(pressRelease !== undefined
+            ? [
+                {
+                  sys: {
+                    type: "Link",
+                    linkType: "Entry",
+                    id: pressRelease.sys.id,
+                  },
+                },
+              ]
+            : []),
+          ...(notesToEditors !== undefined
+            ? [
+                {
+                  sys: {
+                    type: "Link",
+                    linkType: "Entry",
+                    id: notesToEditors.sys.id,
+                  },
+                },
+              ]
+            : []),
+          ...(about !== undefined
+            ? [
+                {
+                  sys: { type: "Link", linkType: "Entry", id: about.sys.id },
+                },
+              ]
+            : []),
         ],
       },
       container: {
         [CONTENTFUL_LOCALE]: true,
       },
-      // heroImage: {
-      //   [CONTENTFUL_LOCALE]: {
-      //     sys: {
-      //       type: "Link",
-      //       linkType: "Asset",
-      //       id: heroMap.get(post.featured_media),
-      //     },
-      //   },
-      // },
-      // author: {
-      //   [CONTENTFUL_LOCALE]: {
-      //     sys: {
-      //       type: "Link",
-      //       linkType: "Entry",
-      //       id: authorMap.has(post.author)
-      //         ? authorMap.get(post.author)
-      //         : CONTENTFUL_FALLBACK_USER_ID,
-      //     },
-      //   },
-      // },
     },
   };
 }

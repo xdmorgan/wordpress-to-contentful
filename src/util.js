@@ -4,6 +4,7 @@ const path = require("path");
 const glob = require("glob");
 const remark = require("remark");
 const TurndownService = require("turndown");
+const { richTextFromMarkdown } = require("@contentful/rich-text-from-markdown");
 
 // when task is ran as singular node process and not as Listr task
 const MOCK_OBSERVER = { next: console.log, complete: console.success };
@@ -114,6 +115,9 @@ const htmlToMarkdown = (content) => {
   });
 };
 
+const htmlToRichText = async (content) =>
+  await richTextFromMarkdown(await htmlToMarkdown(content));
+
 // exportz
 module.exports = {
   MOCK_OBSERVER,
@@ -135,5 +139,5 @@ module.exports = {
   findByGlob,
   urlToMimeType,
   trimUrlToFilename,
-  htmlToMarkdown,
+  htmlToRichText,
 };

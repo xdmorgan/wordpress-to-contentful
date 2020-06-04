@@ -24,7 +24,6 @@ const posts = async (url, observer = MOCK_OBSERVER) => {
     // we've reached the end of the paginated list
     if (status === 400) return observer.complete();
     // badness
-    console.log(response);
     throw new Error(response);
   };
   // kick of recursive requests
@@ -34,6 +33,6 @@ const posts = async (url, observer = MOCK_OBSERVER) => {
 module.exports = () =>
   new Observable((observer) => posts(WP_API_URL, observer));
 
-(async () => {
-  posts(WP_API_URL).then(console.log);
-})();
+// (async () => {
+//   posts(WP_API_URL).then(console.log);
+// })();
