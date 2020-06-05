@@ -10,6 +10,7 @@ const {
   USER_DIR_TRANSFORMED,
   CONTENTFUL_FALLBACK_USER_ID,
   ASSET_DIR_LIST,
+  REDIRECT_BASE_URL,
   findByGlob,
   htmlToRichText,
 } = require("../util");
@@ -27,7 +28,7 @@ const HERO_TYPE = "contentHeroModule";
 const BODY_TYPE = "richTextModule";
 const PRESS_RELEASE_TYPE = "richTextModule";
 const NOTES_TYPE = "richTextModule";
-const AUTHOR_TYPE = "author";
+const URL_TYPE = "url";
 const DONE_FILE_PATH = path.join(ASSET_DIR_LIST, "done.json");
 const AUTHOR_FILE_PATH = path.join(USER_DIR_TRANSFORMED, "authors.json");
 const RESULTS_PATH = path.join(POST_DIR_CREATED, "posts.json");
@@ -39,7 +40,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
   const [inlineMap, heroMap] = createMapsFromAssets(assets);
   const authorMap = createMapFromAuthors(authors);
 
-  return new Promise((complete) => {
+  return new Promise(async (complete) => {
     const queue = [].concat(posts);
     const processing = new Set();
     const done = [];
@@ -49,13 +50,13 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
       pressRelease,
       notesToEditors = {};
 
-    const logProgress = () => {
-      observer.next(
-        `Remaining: ${queue.length} (${processing.size} uploading, ${
-          done.length
-        } done, ${failed.length} failed)`
-      );
-    };
+    // const logProgress = () => {
+    //   observer.next(
+    //     `Remaining: ${queue.length} (${processing.size} uploading, ${
+    //       done.length
+    //     } done, ${failed.length} failed)`
+    //   );
+    // };
 
     const createHero = (post) => {
       return Promise.race([
@@ -104,7 +105,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
             fields: {
               name: { [CONTENTFUL_LOCALE]: post.title },
               content: {
-                [CONTENTFUL_LOCALE]: await htmlToRichText(
+                [CONTENTFUL_LOCALE]: await richTextFromMarkdown(
                   replaceInlineImageUrls(post.body, inlineMap)
                 ),
               },
@@ -227,7 +228,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
     const createBlogPost = async (post) => {
       const identifier = post.slug;
       processing.add(identifier);
-      logProgress();
+      // logProgress();
 
       hero = await createHero(post);
       body = await createBody(post);
@@ -270,6 +271,29 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
             await delay();
             const published = await created.publish();
             await delay();
+            const url = await client.createEntry(URL_TYPE, {
+              fields: {
+                url: {
+                  [CONTENTFUL_LOCALE]: `/media-centre${post.link.replace(
+                    REDIRECT_BASE_URL,
+                    ""
+                  )}`,
+                },
+                brand: { [CONTENTFUL_LOCALE]: "uswitch" },
+                link: {
+                  [CONTENTFUL_LOCALE]: {
+                    sys: {
+                      type: "Link",
+                      linkType: "Entry",
+                      id: created.sys.id,
+                    },
+                  },
+                },
+              },
+            });
+            await delay();
+            await url.publish();
+            await delay();
             resolve(published);
           }),
         ])
@@ -286,7 +310,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
           // either
           .finally(() => {
             processing.delete(identifier);
-            logProgress();
+            // logProgress();
             // more in queue case
             if (queue.length) createBlogPost(queue.shift());
             // no more in queue, but at lesat one parallel
@@ -300,7 +324,8 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
     // items than the amount of parallel processes
     let count = 0;
     while (queue.length && count < PROCESSES) {
-      createBlogPost(queue.shift());
+      const blogPost = await createBlogPost(queue.shift());
+      console.log(blogPost);
       count += 1;
     }
   });
