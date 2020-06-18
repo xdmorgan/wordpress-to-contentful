@@ -11,6 +11,8 @@ const {
   CONTENTFUL_FALLBACK_USER_ID,
   ASSET_DIR_LIST,
   REDIRECT_BASE_URL,
+  urlToMimeType,
+  trimUrlToFilename,
   findByGlob,
   htmlToRichText,
 } = require("../util");
@@ -28,6 +30,7 @@ const HERO_TYPE = "contentHeroModule";
 const BODY_TYPE = "richTextModule";
 const PRESS_RELEASE_TYPE = "richTextModule";
 const NOTES_TYPE = "richTextModule";
+const IMAGE_TYPE = "imageModule";
 const URL_TYPE = "url";
 const DONE_FILE_PATH = path.join(ASSET_DIR_LIST, "done.json");
 const AUTHOR_FILE_PATH = path.join(USER_DIR_TRANSFORMED, "authors.json");
@@ -97,20 +100,81 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
       });
     };
 
+    const createImageModule = (node, asset) => {
+      return Promise.race([
+        new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
+        new Promise(async (resolve, reject) => {
+          await delay();
+
+          const created = await client.createEntry(IMAGE_TYPE, {
+            fields: {
+              name: { [CONTENTFUL_LOCALE]: node.title || "" },
+              image: {
+                [CONTENTFUL_LOCALE]: {
+                  sys: {
+                    type: "Link",
+                    linkType: "Asset",
+                    id: asset.contentful.id,
+                  },
+                },
+              },
+              caption: { [CONTENTFUL_LOCALE]: node.alt || "" },
+            },
+          });
+          await delay();
+          const published = await created.publish();
+          await delay();
+          resolve(published);
+        }),
+      ]).catch((error) => {
+        // TODO: retry failed
+        if (error.hero.items.length) return error.hero.items[0];
+        else failed.push({ post, error });
+      });
+    };
+
     const createBody = async (post) => {
       return Promise.race([
         new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
         new Promise(async (resolve, reject) => {
-          const created = await client.createEntry(BODY_TYPE, {
-            fields: {
-              name: { [CONTENTFUL_LOCALE]: post.title },
-              content: {
-                [CONTENTFUL_LOCALE]: await richTextFromMarkdown(
-                  replaceInlineImageUrls(post.body, inlineMap)
-                ),
+          const content = await richTextFromMarkdown(
+            replaceInlineImageUrls(post.body, inlineMap),
+            async (node) => {
+              const assetList = assets.filter(
+                (asset) => asset.wordpress.postId === post.id
+              );
+
+              const imageModule = await createImageModule(
+                node,
+                assetList.find((asset) => asset.contentful.url === node.url)
+              );
+
+              return {
+                nodeType: "embedded-entry-block",
+                content: [],
+                data: {
+                  target: {
+                    sys: {
+                      type: "Link",
+                      linkType: "Entry",
+                      id: imageModule.sys.id,
+                    },
+                  },
+                },
+              };
+            }
+          );
+
+          const created = await client
+            .createEntry(BODY_TYPE, {
+              fields: {
+                name: { [CONTENTFUL_LOCALE]: post.title },
+                content: {
+                  [CONTENTFUL_LOCALE]: content,
+                },
               },
-            },
-          });
+            })
+            .catch((error) => console.log(error));
 
           await delay();
           const published = await created.publish();
@@ -202,13 +266,15 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
           } else {
             const content = await htmlToRichText(`
               <h3>Notes to editors</h3>
-              ${notesToEditors}
+              ${notes_to_editors}
             `);
+
+            console.log(content);
 
             const created = await client.createEntry(NOTES_TYPE, {
               fields: {
                 name: {
-                  [CONTENTFUL_LOCALE]: `Notes to editors`,
+                  [CONTENTFUL_LOCALE]: post.title,
                 },
                 content: {
                   [CONTENTFUL_LOCALE]: content,
@@ -289,6 +355,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
                     },
                   },
                 },
+                robotsMeta: { [CONTENTFUL_LOCALE]: ["noindex", "nofollow"] },
               },
             });
             await delay();
@@ -466,7 +533,7 @@ module.exports = (client) => {
 };
 
 // debug
-// (async () => {
-//   const client = await require("./create-client")();
-//   processBlogPosts(client).then(console.log);
-// })();
+(async () => {
+  const client = await require("./create-client")();
+  processBlogPosts(client).then(console.log);
+})();
