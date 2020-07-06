@@ -10,7 +10,7 @@ const TURNDOWN_OPTS = {
   emDelimiter: "*",
   strongDelimiter: "__",
   linkStyle: "inlined",
-  linkReferenceStyle: "full"
+  linkReferenceStyle: "full",
 };
 const turndownService = new TurndownService(TURNDOWN_OPTS);
 const { Observable } = require("rxjs");
@@ -20,10 +20,10 @@ const {
   REDIRECTS_DIR,
   REDIRECT_BASE_URL,
   MOCK_OBSERVER,
-  findByGlob
+  findByGlob,
 } = require("../util");
 
-const extractImages = post => {
+const extractImages = (post) => {
   const regex = /<img.*?src="(.*?)"[\s\S]*?alt="(.*?)"/g;
   post.bodyImages = [];
   while ((foundImage = regex.exec(post.body))) {
@@ -32,7 +32,7 @@ const extractImages = post => {
       link: foundImage[1],
       description: alt,
       title: alt,
-      postId: post.id
+      postId: post.id,
     });
   }
   return post;
@@ -41,11 +41,11 @@ const extractImages = post => {
 function convertToMarkdown(post) {
   return {
     ...post,
-    body: turndownService.turndown(post.body)
+    body: turndownService.turndown(post.body),
   };
 }
 
-const transform = post => {
+const transform = (post) => {
   delete post._links;
   delete post.guid;
   // rename and strip formatting from excerpt, then remove
@@ -77,18 +77,18 @@ const transform = post => {
 
 const writePost = (name, data) =>
   fs.writeJson(path.join(POST_DIR_TRANSFORMED, `${name}.json`), data, {
-    spaces: 2
+    spaces: 2,
   });
 
 const postLinkToRedirectSource = (link, base = REDIRECT_BASE_URL) =>
   link.replace(base, "");
-const postSlugToRedirectDestination = slug => `/blog/${slug}`;
+const postSlugToRedirectDestination = (slug) => `/blog/${slug}`;
 const formatAsRedirect = ({ link, slug }) =>
   `${postLinkToRedirectSource(link)}     ${postSlugToRedirectDestination(
     slug
   )}`;
 
-const writeRedirects = rdrx => {
+const writeRedirects = (rdrx) => {
   const txt = rdrx.map(formatAsRedirect).join("\n");
   return fs.writeFile(path.join(REDIRECTS_DIR, `posts`), txt);
 };
@@ -127,4 +127,4 @@ const transformByPage = async (observer = MOCK_OBSERVER) => {
   observer.complete(`Successfully tranfsormed ${count} posts`);
 };
 
-module.exports = () => new Observable(observer => transformByPage(observer));
+module.exports = () => new Observable((observer) => transformByPage(observer));

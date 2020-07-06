@@ -66,7 +66,7 @@ module.exports = (client) =>
     processSavedUsers(client, observer).then(() => observer.complete())
   );
 
-// (async () => {
-//   const client = await require("./create-client")();
-//   processSavedUsers(client).then((fin) => console.log(fin.length));
-// })();
+(async () => {
+  const client = await require("./create-client")();
+  processSavedUsers(client).then((fin) => console.log(fin.length));
+})();

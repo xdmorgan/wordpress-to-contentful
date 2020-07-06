@@ -140,4 +140,5 @@ module.exports = {
   urlToMimeType,
   trimUrlToFilename,
   htmlToRichText,
+  htmlToMarkdown,
 };

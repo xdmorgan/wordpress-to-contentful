@@ -6,8 +6,10 @@ const {
   CONTENTFUL_LOCALE,
   ASSET_DIR_LIST,
   urlToMimeType,
-  trimUrlToFilename
+  trimUrlToFilename,
 } = require("../util");
+const createClient = require("./create-client");
+const { create } = require("domain");
 
 // Do not exceed ten, delay is an important factor too
 // 8 processes and 1s delay seem to make sense, for 10p/s
@@ -21,10 +23,10 @@ const DONE_FILE_PATH = path.join(ASSET_DIR_LIST, "done.json");
 const FAILED_FILE_PATH = path.join(ASSET_DIR_LIST, "failed.json");
 
 const delay = (dur = API_DELAY_DUR) =>
-  new Promise(resolve => setTimeout(resolve, dur));
+  new Promise((resolve) => setTimeout(resolve, dur));
 
 const uploadAssets = (client, assets, observer = MOCK_OBSERVER) =>
-  new Promise(complete => {
+  new Promise((complete) => {
     const queue = [].concat(assets);
     const processing = new Set();
     const done = [];
@@ -42,30 +44,39 @@ const uploadAssets = (client, assets, observer = MOCK_OBSERVER) =>
       );
     };
 
-    const upload = asset => {
+    const upload = (asset) => {
       const identifier = asset.link;
       return (
         Promise.race([
           new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
-          new Promise(async resolve => {
+          new Promise(async (resolve) => {
             processing.add(identifier);
             proglog();
+            const exists = await client.getAssets({
+              "fields.name[in]": asset.title,
+            });
             await delay();
-            const created = await client.createAsset(transformForUpload(asset));
-            await delay();
-            const processed = await created.processForAllLocales();
-            await delay();
-            const published = await processed.publish();
-            await delay();
-            resolve(published);
-          })
+            if (!exists.total) {
+              const created = await client.createAsset(
+                transformForUpload(asset)
+              );
+              await delay();
+              const processed = await created.processForAllLocales();
+              await delay();
+              const published = await processed.publish();
+              await delay();
+              resolve(published);
+            } else {
+              resolve(exists.items[0]);
+            }
+          }),
         ])
           // happy path
-          .then(published => {
+          .then((published) => {
             done.push(transformForSaving(asset, published));
           })
           // badness
-          .catch(error => {
+          .catch((error) => {
             // TODO: retry failed
             failed.push({ asset, error });
           })
@@ -95,19 +106,19 @@ function transformForUpload(asset) {
   return {
     fields: {
       title: {
-        [CONTENTFUL_LOCALE]: asset.title
+        [CONTENTFUL_LOCALE]: asset.title,
       },
       description: {
-        [CONTENTFUL_LOCALE]: asset.description
+        [CONTENTFUL_LOCALE]: asset.description,
       },
       file: {
         [CONTENTFUL_LOCALE]: {
           contentType: urlToMimeType(asset.link),
           fileName: trimUrlToFilename(asset.link),
-          upload: encodeURI(asset.link)
-        }
-      }
-    }
+          upload: encodeURI(asset.link),
+        },
+      },
+    },
   };
 }
 
@@ -119,22 +130,31 @@ function transformForSaving(wp, cf) {
       title: cf.fields.title[CONTENTFUL_LOCALE],
       description: cf.fields.description[CONTENTFUL_LOCALE],
       url: cf.fields.file[CONTENTFUL_LOCALE].url,
-      name: cf.fields.file[CONTENTFUL_LOCALE].fileName
-    }
+      name: cf.fields.file[CONTENTFUL_LOCALE].fileName,
+    },
   };
 }
 
-async function uploadListOfAssets(client, observer) {
+async function uploadListOfAssets(client, observer = MOCK_OBSERVER) {
   const loc = path.join(ASSET_DIR_LIST, "assets.json");
   const assets = await fs.readJson(loc);
-  const { done, failed } = await uploadAssets(client, assets, observer);
+
+  const loc2 = path.join(ASSET_DIR_LIST, "failed.json");
+  const failedMedia = await fs.readJson(loc2);
+  const filtered = assets.filter((asset) =>
+    failedMedia.find((element) => {
+      return element.asset.mediaNumber === asset.mediaNumber;
+    })
+  );
+
+  const { done, failed } = await uploadAssets(client, filtered, observer);
   await Promise.all([
     fs.writeJson(DONE_FILE_PATH, done, { spaces: 2 }),
-    fs.writeJson(FAILED_FILE_PATH, failed, { spaces: 2 })
+    fs.writeJson(FAILED_FILE_PATH, failed, { spaces: 2 }),
   ]);
 }
 
-module.exports = client =>
-  new Observable(observer =>
+module.exports = (client) =>
+  new Observable((observer) =>
     uploadListOfAssets(client, observer).then(() => observer.complete())
   );

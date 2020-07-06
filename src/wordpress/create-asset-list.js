@@ -7,7 +7,7 @@ const {
   POST_DIR_TRANSFORMED,
   MOCK_OBSERVER,
   WP_API_URL,
-  findByGlob
+  findByGlob,
 } = require("../util");
 
 const urlById = (url, id) => `${url}/media/${id}`;
@@ -27,7 +27,7 @@ const listOfImagesByPost = async (post, url) => {
         link: json.guid.rendered,
         title: json.title.rendered || "",
         description: json.alt_text || "",
-        postId
+        postId,
       });
     }
   }
@@ -53,9 +53,12 @@ const assets = async (url, observer = MOCK_OBSERVER) => {
   }
 
   await fs.writeJson(path.join(ASSET_DIR_LIST, "assets.json"), list, {
-    spaces: 2
+    spaces: 2,
   });
   observer.complete();
 };
 
-module.exports = () => new Observable(observer => assets(WP_API_URL, observer));
+assets(WP_API_URL);
+
+module.exports = () =>
+  new Observable((observer) => assets(WP_API_URL, observer));

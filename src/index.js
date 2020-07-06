@@ -70,14 +70,14 @@ const tasks = new Listr([
           title: "Upload assets",
           task: () => createClient().then(uploadAssets),
         },
-        {
-          title: "Match WP 'User' to Contentful 'Author'",
-          task: () => createClient().then(matchAuthorTypes),
-        },
-        {
-          title: "Create Posts",
-          task: () => createClient().then(createBlogPosts),
-        },
+        // {
+        //   title: "Match WP 'User' to Contentful 'Author'",
+        //   task: () => createClient().then(matchAuthorTypes),
+        // },
+        // {
+        //   title: "Create Posts",
+        //   task: () => createClient().then(createBlogPosts),
+        // },
       ]);
     },
   },
