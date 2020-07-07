@@ -7,16 +7,29 @@ const {
   USER_DIR_TRANSFORMED,
   CONTENTFUL_LOCALE,
   findByGlob,
+  htmlToRichText,
+  htmlToMarkdown,
 } = require("../util");
 const OUTPUT_DATA_PATH = path.join(USER_DIR_TRANSFORMED, "authors.json");
 const CF_USER_TYPE = "author";
 
 const sanitizeName = (s) => s.toLowerCase().replace(/\ /gi, "");
 
-async function findUserInContentful(wpUser, cfUsers) {
+async function findUserInContentful(wpUser, cfUsers, client) {
   const found = cfUsers
     .map(transformCfUser)
     .find(({ name = "" }) => sanitizeName(wpUser.name) === sanitizeName(name));
+
+  if (!found) {
+    const author = await client.createEntry(CF_USER_TYPE, {
+      fields: {
+        title: { [CONTENTFUL_LOCALE]: wpUser.name },
+        slug: { [CONTENTFUL_LOCALE]: wpUser.slug },
+        name: { [CONTENTFUL_LOCALE]: wpUser.name },
+        bio: { [CONTENTFUL_LOCALE]: await htmlToMarkdown(wpUser.description) },
+      },
+    });
+  }
 
   return {
     wordpress: {
@@ -52,7 +65,7 @@ async function processSavedUsers(client, observer = MOCK_OBSERVER) {
 
   while (users.length) {
     const user = users.shift();
-    const result = await findUserInContentful(user, cfUsers);
+    const result = await findUserInContentful(user, cfUsers, client);
     output.push(result);
   }
 

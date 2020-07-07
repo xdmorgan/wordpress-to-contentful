@@ -481,7 +481,6 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
     let count = 0;
     while (queue.length && count < PROCESSES) {
       const blogPost = await createBlogPost(queue.shift());
-      console.log(blogPost);
       count += 1;
     }
   });
@@ -506,7 +505,7 @@ function transform(post, inlineMap, heroMap, authorMap, modules) {
           sys: {
             type: "Link",
             linkType: "Asset",
-            id: heroMap.get(post.featured_media),
+            id: heroMap.get(post.id),
           },
         },
       },

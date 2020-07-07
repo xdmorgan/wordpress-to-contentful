@@ -17,6 +17,7 @@ const {
   htmlToRichText,
   htmlToMarkdown,
 } = require("../util");
+const { exit } = require("process");
 
 // Do not exceed ten, delay is an important factor too
 // 8 processes and 1s delay seem to make sense, for 10p/s
@@ -55,10 +56,10 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
     const processing = new Set();
     const done = [];
     const failed = [];
-    let hero,
-      body,
-      pressRelease,
-      notesToEditors = {};
+    // let hero,
+    //   body,
+    //   pressRelease,
+    //   notesToEditors = {};
 
     const logProgress = () => {
       observer.next(
@@ -161,7 +162,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
       });
     };
 
-    const createImageModule = (node, asset) => {
+    const createImageModule = (node, asset, post) => {
       return Promise.race([
         new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
         new Promise(async (resolve, reject) => {
@@ -169,7 +170,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
 
           const created = await client.createEntry(IMAGE_TYPE, {
             fields: {
-              name: { [CONTENTFUL_LOCALE]: node.title || "" },
+              name: { [CONTENTFUL_LOCALE]: node.title || post.title || "" },
               image: {
                 [CONTENTFUL_LOCALE]: {
                   sys: {
@@ -207,7 +208,8 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
 
               const imageModule = await createImageModule(
                 node,
-                assetList.find((asset) => asset.contentful.url === node.url)
+                assetList.find((asset) => asset.contentful.url === node.url),
+                post
               );
 
               return {
@@ -378,10 +380,10 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
               });
             }
 
-            hero = await createHero(post);
-            body = await createBody(post);
-            pressRelease = await createPressRelease(post);
-            notesToEditors = await createNotesToEditors(post);
+            const hero = await createHero(post);
+            const body = await createBody(post);
+            const pressRelease = await createPressRelease(post);
+            const notesToEditors = await createNotesToEditors(post);
             const about = await client.getEntries({
               content_type: "richTextModule",
               "fields.name[in]": "About Uswitch - media centre example",
@@ -445,6 +447,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
                   ],
                 },
                 robotsMeta: { [CONTENTFUL_LOCALE]: ["noindex", "nofollow"] },
+                publishDate: { [CONTENTFUL_LOCALE]: post.publishDate },
               },
             });
             await delay();
@@ -481,7 +484,6 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
     let count = 0;
     while (queue.length && count < PROCESSES) {
       const blogPost = await createBlogPost(queue.shift());
-      console.log(blogPost);
       count += 1;
     }
   });
@@ -506,7 +508,7 @@ function transform(post, inlineMap, heroMap, authorMap, modules) {
           sys: {
             type: "Link",
             linkType: "Asset",
-            id: heroMap.get(post.featured_media),
+            id: heroMap.get(post.id),
           },
         },
       },
@@ -586,8 +588,8 @@ function createMapsFromAssets(assets) {
   );
   assets.forEach(
     (asset) =>
-      asset.wordpress.mediaNumber &&
-      heros.set(asset.wordpress.mediaNumber, asset.contentful.id)
+      asset.wordpress.postId &&
+      heros.set(asset.wordpress.postId, asset.contentful.id)
   );
   return [links, heros];
 }
