@@ -45,11 +45,15 @@ function convertToMarkdown(post) {
   };
 }
 
+const replaceUswitch = (text) => text.replace("uSwitch", "Uswitch");
+
 const transform = (post) => {
   delete post._links;
   delete post.guid;
   // rename and strip formatting from excerpt, then remove
-  post.description = html2plaintext(post.excerpt.rendered || "");
+  post.description = html2plaintext(
+    replaceUswitch(post.excerpt.rendered) || ""
+  );
   delete post.excerpt;
   // delete post.author;
   delete post.comment_status;
@@ -66,9 +70,9 @@ const transform = (post) => {
   delete post.modified_gmt;
   delete post.tags;
   delete post.sticky;
-  post.body = post.content.rendered;
+  post.body = replaceUswitch(post.content.rendered);
   delete post.content;
-  post.title = html2plaintext(post.title.rendered); // decode entities
+  post.title = html2plaintext(replaceUswitch(post.title.rendered)); // decode entities
   post.slug = post.slug;
   post.category = post.categories[0];
   delete post.categories;

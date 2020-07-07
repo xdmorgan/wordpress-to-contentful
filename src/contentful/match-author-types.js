@@ -29,6 +29,17 @@ async function findUserInContentful(wpUser, cfUsers, client) {
         bio: { [CONTENTFUL_LOCALE]: await htmlToMarkdown(wpUser.description) },
       },
     });
+
+    return {
+      wordpress: {
+        id: wpUser.id,
+        name: wpUser.name,
+      },
+      contentful: {
+        id: author.sys.id,
+        name: author.fields.name[CONTENTFUL_LOCALE],
+      },
+    };
   }
 
   return {
