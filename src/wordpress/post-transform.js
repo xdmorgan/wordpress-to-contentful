@@ -134,4 +134,4 @@ const transformByPage = async (observer = MOCK_OBSERVER) => {
 
 module.exports = () => new Observable((observer) => transformByPage(observer));
 
-transformByPage();
+// transformByPage();

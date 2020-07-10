@@ -64,7 +64,7 @@ const assets = async (url, observer = MOCK_OBSERVER) => {
   observer.complete();
 };
 
-assets(WP_API_URL);
+// assets(WP_API_URL);
 
 module.exports = () =>
   new Observable((observer) => assets(WP_API_URL, observer));

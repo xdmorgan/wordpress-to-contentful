@@ -94,6 +94,25 @@ const EXCLUDE = [
   "1QQxMQdQJ0IbT6CFRvlFhS",
 ];
 
+function transformEntry(entry) {
+  return {
+    id: entry.sys.id,
+    contentType: entry.sys.contentType.sys.id,
+  };
+}
+
+async function getEntries(client, observer = MOCK_OBSERVER, skip = 0) {
+  const entries = await Promise.all(
+    EXCLUDE.map(async (entryId) => await client.getEntry(entryId))
+  );
+
+  console.log(
+    entries
+      .map(transformEntry)
+      .sort((a, b) => a.contentType.localeCompare(b.contentType))
+  );
+}
+
 async function resetContentful(client, observer = MOCK_OBSERVER, skip = 0) {
   // console.log(await client.getEntry("1hxS49bHBpswRzqQWe67Cl"));
   // exit(1);
@@ -156,5 +175,5 @@ async function deleteAssets(client, observer = MOCK_OBSERVER, skip = 0) {
 
 (async () => {
   const client = await require("./contentful/create-client")();
-  resetContentful(client).then(console.log);
+  getEntries(client).then(console.log);
 })();

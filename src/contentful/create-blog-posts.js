@@ -90,7 +90,6 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
                       : "";
                     const isArray =
                       value.startsWith("| ") && value.endsWith(" |");
-                    console.log("=====", value);
 
                     if (isArray) {
                       const valArr = value.split("\n").map((val, index) =>
@@ -103,7 +102,6 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
                             .trim(),
                         }))
                       );
-                      exit(1);
 
                       const table = await client
                         .createEntry(TABLE_TYPE, {
@@ -336,15 +334,14 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
             }
           );
 
-          content.content.forEach((item) =>
-            console.log(
-              item.content
-                .filter((item) => item.value !== undefined)
-                .map((item) => item.value.trim())
-                .join("")
-            )
-          );
-          exit(1);
+          // content.content.forEach((item) =>
+          //   console.log(
+          //     item.content
+          //       .filter((item) => item.value !== undefined)
+          //       .map((item) => item.value.trim())
+          //       .join("")
+          //   )
+          // );
 
           const created = await client
             .createEntry(BODY_TYPE, {
@@ -532,26 +529,25 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
           new Promise(async (resolve, reject) => {
             await delay();
 
-            // const exists = await client.getEntries({
-            //   content_type: URL_TYPE,
-            //   "fields.url[in]": `/media-centre${post.link.replace(
-            //     REDIRECT_BASE_URL,
-            //     ""
-            //   )}`,
-            // });
+            const exists = await client.getEntries({
+              content_type: URL_TYPE,
+              "fields.url[in]": `/media-centre${post.link.replace(
+                REDIRECT_BASE_URL,
+                ""
+              )}`,
+            });
 
-            // if ((exists && exists.total > 0) || !authorMap.has(post.author)) {
-            //   return reject({
-            //     error: !authorMap.has(post.author)
-            //       ? "No author"
-            //       : "Post already exists",
-            //     post: exists,
-            //   });
-            // }
+            if ((exists && exists.total > 0) || !authorMap.has(post.author)) {
+              return reject({
+                error: !authorMap.has(post.author)
+                  ? "No author"
+                  : "Post already exists",
+                post: exists,
+              });
+            }
 
-            // const hero = await createHero(post);
+            const hero = await createHero(post);
             const body = await createBody(post);
-            exit(1);
             const pressRelease = await createPressRelease(post);
             const notesToEditors = await createNotesToEditors(post);
             const about = await client.getEntries({
@@ -810,7 +806,7 @@ module.exports = (client) => {
 };
 
 // debug
-(async () => {
-  const client = await require("./create-client")();
-  processBlogPosts(client).then(console.log);
-})();
+// (async () => {
+//   const client = await require("./create-client")();
+//   processBlogPosts(client).then(console.log);
+// })();
