@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs-extra");
 const { richTextFromMarkdown } = require("@contentful/rich-text-from-markdown");
+const md = require("to-markdown");
 const { Observable } = require("rxjs");
 const {
   MOCK_OBSERVER,
@@ -11,11 +12,8 @@ const {
   CONTENTFUL_FALLBACK_USER_ID,
   ASSET_DIR_LIST,
   REDIRECT_BASE_URL,
-  urlToMimeType,
-  trimUrlToFilename,
   findByGlob,
   htmlToRichText,
-  htmlToMarkdown,
 } = require("../util");
 const { exit } = require("process");
 
@@ -33,9 +31,17 @@ const BODY_TYPE = "richTextModule";
 const PRESS_RELEASE_TYPE = "richTextModule";
 const NOTES_TYPE = "richTextModule";
 const IMAGE_TYPE = "imageModule";
+const TABLE_TYPE = "table";
 const URL_TYPE = "url";
 const CATEGORY_TYPE = "categoryTag";
 const PRESS_RELEASE_CATEGORY_ID = "l2Kds91EDCKqvkGCVmmcX";
+const SECOND_NAV = {
+  sys: {
+    type: "Link",
+    linkType: "Entry",
+    id: "2cShHVm7dhQorPilV9qV9O",
+  },
+};
 const DONE_FILE_PATH = path.join(ASSET_DIR_LIST, "done.json");
 const AUTHOR_FILE_PATH = path.join(USER_DIR_TRANSFORMED, "authors.json");
 const RESULTS_PATH = path.join(POST_DIR_CREATED, "posts.json");
@@ -68,6 +74,81 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
         } done, ${failed.length} failed)`
       );
     };
+
+    const parseRichText = async (content, post) =>
+      Promise.race([
+        new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
+        new Promise(async (resolve) =>
+          resolve({
+            ...content,
+            ...(content.nodeType !== "text" &&
+              content.nodeType !== "image" && {
+                content: await Promise.all(
+                  content.content.map(async (node) => {
+                    const value = node.content
+                      ? node.content.map((item) => item.value).join("")
+                      : "";
+                    const isArray =
+                      value.startsWith("| ") && value.endsWith(" |");
+                    console.log("=====", value);
+
+                    if (isArray) {
+                      const valArr = value.split("\n").map((val, index) =>
+                        val.split(/\| | \| | \|/).map((res) => ({
+                          type: index === 0 ? "th" : "td",
+                          value: res
+                            .replace(/\\n/g, "")
+                            .replace(/\\t/g, "")
+                            .replace("uSwitch", "Uswitch")
+                            .trim(),
+                        }))
+                      );
+                      exit(1);
+
+                      const table = await client
+                        .createEntry(TABLE_TYPE, {
+                          fields: {
+                            name: {
+                              [CONTENTFUL_LOCALE]: post.title || "",
+                            },
+                            contents: {
+                              [CONTENTFUL_LOCALE]: valArr,
+                            },
+                          },
+                        })
+                        .catch(console.log);
+
+                      return {
+                        nodeType:
+                          content.nodeType === "paragraph"
+                            ? "embedded-entry-inline"
+                            : "embedded-entry-block",
+                        content: [],
+                        data: {
+                          target: {
+                            sys: {
+                              type: "Link",
+                              linkType: "Entry",
+                              id: table.sys.id,
+                            },
+                          },
+                        },
+                      };
+                    }
+
+                    return await parseRichText(node, post);
+                  })
+                ),
+              }),
+            ...(content.nodeType === "text" && {
+              value: content.value
+                .replace(/\\n/g, "")
+                .replace(/\\t/g, "")
+                .replace("uSwitch", "Uswitch"),
+            }),
+          })
+        ),
+      ]);
 
     const createHero = (post) => {
       return Promise.race([
@@ -199,41 +280,78 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
       return Promise.race([
         new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
         new Promise(async (resolve, reject) => {
+          // console.log(
+          //   post.body
+          //     .replace(/\\n/g, "")
+          //     .replace(/\\t/g, "")
+          //     .split("\n")
+          //     .join("")
+          // );
           const content = await richTextFromMarkdown(
-            replaceInlineImageUrls(post.body, inlineMap),
+            md(
+              replaceInlineImageUrls(
+                post.body
+                  .replace(/\\n/g, "")
+                  .replace(/\\t/g, "")
+                  .split("\n")
+                  .join(""),
+                inlineMap
+              ),
+              {
+                gfm: true,
+              }
+            ),
             async (node) => {
               const assetList = assets.filter(
                 (asset) => asset.wordpress.postId === post.id
               );
 
-              const imageModule = await createImageModule(
-                node,
-                assetList.find((asset) => asset.contentful.url === node.url),
-                post
-              );
+              switch (node.type) {
+                case "image":
+                  const imageModule = await createImageModule(
+                    node,
+                    assetList.find(
+                      (asset) => asset.contentful.url === node.url
+                    ),
+                    post
+                  );
 
-              return {
-                nodeType: "embedded-entry-block",
-                content: [],
-                data: {
-                  target: {
-                    sys: {
-                      type: "Link",
-                      linkType: "Entry",
-                      id: imageModule.sys.id,
+                  return {
+                    nodeType: "embedded-entry-block",
+                    content: [],
+                    data: {
+                      target: {
+                        sys: {
+                          type: "Link",
+                          linkType: "Entry",
+                          id: imageModule.sys.id,
+                        },
+                      },
                     },
-                  },
-                },
-              };
+                  };
+
+                // case "html":
+                //   console.log(node);
+              }
             }
           );
+
+          content.content.forEach((item) =>
+            console.log(
+              item.content
+                .filter((item) => item.value !== undefined)
+                .map((item) => item.value.trim())
+                .join("")
+            )
+          );
+          exit(1);
 
           const created = await client
             .createEntry(BODY_TYPE, {
               fields: {
-                name: { [CONTENTFUL_LOCALE]: post.title },
+                name: { [CONTENTFUL_LOCALE]: `${post.title} - body` },
                 content: {
-                  [CONTENTFUL_LOCALE]: content,
+                  [CONTENTFUL_LOCALE]: await parseRichText(content, post),
                 },
               },
             })
@@ -327,18 +445,69 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
           if (!notes_to_editors) {
             reject({ error: "No notes for this post" });
           } else {
-            const content = await htmlToRichText(`
+            const content = await richTextFromMarkdown(
+              md(
+                `
               <h3>Notes to editors</h3>
-              ${notes_to_editors.replace(/\\n/g, "<br/>").replace(/\\t/g, "")}
-            `);
+              ${replaceInlineImageUrls(notes_to_editors, inlineMap)}`,
+                {
+                  gfm: true,
+                }
+              ),
+              async (node) => {
+                const assetList = assets.filter(
+                  (asset) => asset.wordpress.postId === post.id
+                );
+
+                switch (node.type) {
+                  case "image":
+                    console.log();
+                    const imageModule = await createImageModule(
+                      node,
+                      assetList.find(
+                        (asset) => asset.contentful.url === node.url
+                      ),
+                      post
+                    );
+
+                    return {
+                      nodeType: "embedded-entry-block",
+                      content: [],
+                      data: {
+                        target: {
+                          sys: {
+                            type: "Link",
+                            linkType: "Entry",
+                            id: imageModule.sys.id,
+                          },
+                        },
+                      },
+                    };
+                }
+
+                switch (node.value) {
+                  case "<sup>":
+                  case "</sup>":
+                  case "<sub>":
+                  case "</sub>":
+                    return {
+                      nodeType: "text",
+                      // value: node.value,
+                      value: "",
+                      marks: [],
+                      data: {},
+                    };
+                }
+              }
+            );
 
             const created = await client.createEntry(NOTES_TYPE, {
               fields: {
                 name: {
-                  [CONTENTFUL_LOCALE]: post.title,
+                  [CONTENTFUL_LOCALE]: `${post.title} - notes to editors`,
                 },
                 content: {
-                  [CONTENTFUL_LOCALE]: content,
+                  [CONTENTFUL_LOCALE]: await parseRichText(content, post),
                 },
               },
             });
@@ -363,25 +532,26 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
           new Promise(async (resolve, reject) => {
             await delay();
 
-            const exists = await client.getEntries({
-              content_type: URL_TYPE,
-              "fields.url[in]": `/media-centre${post.link.replace(
-                REDIRECT_BASE_URL,
-                ""
-              )}`,
-            });
+            // const exists = await client.getEntries({
+            //   content_type: URL_TYPE,
+            //   "fields.url[in]": `/media-centre${post.link.replace(
+            //     REDIRECT_BASE_URL,
+            //     ""
+            //   )}`,
+            // });
 
-            if ((exists && exists.total > 0) || !authorMap.has(post.author)) {
-              return reject({
-                error: !authorMap.has(post.author)
-                  ? "No author"
-                  : "Post already exists",
-                post: exists,
-              });
-            }
+            // if ((exists && exists.total > 0) || !authorMap.has(post.author)) {
+            //   return reject({
+            //     error: !authorMap.has(post.author)
+            //       ? "No author"
+            //       : "Post already exists",
+            //     post: exists,
+            //   });
+            // }
 
-            const hero = await createHero(post);
+            // const hero = await createHero(post);
             const body = await createBody(post);
+            exit(1);
             const pressRelease = await createPressRelease(post);
             const notesToEditors = await createNotesToEditors(post);
             const about = await client.getEntries({
@@ -514,6 +684,7 @@ function transform(post, inlineMap, heroMap, authorMap, modules) {
       },
       modules: {
         [CONTENTFUL_LOCALE]: [
+          SECOND_NAV,
           ...(hero !== undefined
             ? [
                 {
@@ -616,8 +787,11 @@ async function processBlogPosts(client, observer = MOCK_OBSERVER) {
   const assets = await fs.readJson(DONE_FILE_PATH);
   const authors = await fs.readJson(AUTHOR_FILE_PATH);
 
+  // 8004
+
   const result = await createBlogPosts(
-    posts,
+    // posts,
+    posts.filter((post) => post.id === 5346),
     assets,
     authors,
     client,

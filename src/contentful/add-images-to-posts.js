@@ -30,67 +30,69 @@ const delay = (dur = API_DELAY_DUR) =>
 async function processBlogPosts(client, observer = MOCK_OBSERVER, skip = 0) {
   const pressReleases = await client.getEntries({
     content_type: "url",
+    links_to_entry: PRESS_RELEASE_CATEGORY_ID,
     skip,
     limit: LIMIT,
   });
 
   pressReleases.items.forEach(async (release) => {
     await delay();
-    const isPressRelease =
-      release.fields.categories &&
-      Object.values(release.fields.categories)[0].find(
-        (element) => element.sys.id === PRESS_RELEASE_CATEGORY_ID
-      );
+    const page = await client.getEntry(
+      release.fields.link[CONTENTFUL_LOCALE].sys.id
+    );
+    await delay();
 
-    if (isPressRelease) {
-      await delay();
-      const page = await client.getEntry(
-        release.fields.link[CONTENTFUL_LOCALE].sys.id
-      );
-      await delay();
+    const dump = await fs.readJSON(
+      path.join(process.cwd(), "dist/list-of-assets/done.json"),
+      "utf8"
+    );
+    const posts = await fs.readJSON(
+      path.join(process.cwd(), "dist/posts-created/posts copy.json"),
+      "utf8"
+    );
+    await delay();
 
-      const dump = await fs.readJSON(
-        path.join(process.cwd(), "dist/list-of-assets/done.json"),
-        "utf8"
-      );
-      const posts = await fs.readJSON(
-        path.join(process.cwd(), "dist/posts-created/posts.json"),
-        "utf8"
-      );
-      await delay();
+    const post = posts.done.find((post) => {
+      return post.title === page.fields.title[CONTENTFUL_LOCALE];
+    });
 
-      const { post } = posts.failed.find((post) => {
-        return post.post.title === page.fields.title[CONTENTFUL_LOCALE];
-      });
-
+    if (post && post.featured_media) {
       const { featured_media } = post;
+      const image = await dump.find(
+        (element) => element.wordpress.mediaNumber === featured_media
+      );
+      await delay();
 
-      if (featured_media) {
-        const image = await dump.find(
-          (element) => element.wordpress.mediaNumber === featured_media
-        );
-        await delay();
-
-        if (image) {
-          page.fields.metaImage = {
-            [CONTENTFUL_LOCALE]: {
-              sys: {
-                type: "Link",
-                linkType: "Asset",
-                id: image.contentful.id,
-              },
+      if (image) {
+        page.fields.metaImage = {
+          [CONTENTFUL_LOCALE]: {
+            sys: {
+              type: "Link",
+              linkType: "Asset",
+              id: image.contentful.id,
             },
-          };
+          },
+        };
 
-          page
-            .update()
-            .then((updatedContentType) => {
-              console.log("Update was successful");
-            })
-            .catch(console.log);
-        }
+        page
+          .update()
+          .then((updatedContentType) => {
+            console.log("Update was successful");
+          })
+          .catch(console.log);
       }
-    }
+    } else if (post && !post.featured_media) {
+      await delay();
+
+      page.fields.metaImage = null;
+
+      page
+        .update()
+        .then((updatedContentType) => {
+          console.log("Edit was successful", post);
+        })
+        .catch(console.log);
+    } else console.log("unsuccesfull", post);
   });
   // console.log(pressReleases);
 

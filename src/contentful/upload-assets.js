@@ -2,6 +2,7 @@ const path = require("path");
 const fs = require("fs-extra");
 const { Observable } = require("rxjs");
 const {
+  CONTENTFUL_FALLBACK_USER_ID,
   MOCK_OBSERVER,
   CONTENTFUL_LOCALE,
   ASSET_DIR_LIST,
@@ -10,6 +11,7 @@ const {
 } = require("../util");
 const createClient = require("./create-client");
 const { create } = require("domain");
+const { exit } = require("process");
 
 // Do not exceed ten, delay is an important factor too
 // 8 processes and 1s delay seem to make sense, for 10p/s
@@ -53,8 +55,15 @@ const uploadAssets = (client, assets, observer = MOCK_OBSERVER) =>
             processing.add(identifier);
             proglog();
             const exists = await client.getAssets({
-              "fields.name[in]": asset.title,
+              "sys.createdBy.sys.id": CONTENTFUL_FALLBACK_USER_ID,
+              "fields.title":
+                asset.title ||
+                asset.link.replace(
+                  "http://media-centre.uswitchinternal.com",
+                  "https://www.uswitch.com/media-centre"
+                ),
             });
+
             await delay();
             if (!exists.total) {
               const created = await client.createAsset(
@@ -106,7 +115,12 @@ function transformForUpload(asset) {
   return {
     fields: {
       title: {
-        [CONTENTFUL_LOCALE]: asset.title,
+        [CONTENTFUL_LOCALE]:
+          asset.title ||
+          asset.link.replace(
+            "http://media-centre.uswitchinternal.com",
+            "https://www.uswitch.com/media-centre"
+          ),
       },
       description: {
         [CONTENTFUL_LOCALE]: asset.description,
@@ -115,7 +129,12 @@ function transformForUpload(asset) {
         [CONTENTFUL_LOCALE]: {
           contentType: urlToMimeType(asset.link),
           fileName: trimUrlToFilename(asset.link),
-          upload: encodeURI(asset.link),
+          upload: encodeURI(
+            asset.link.replace(
+              "http://media-centre.uswitchinternal.com",
+              "https://www.uswitch.com/media-centre"
+            )
+          ),
         },
       },
     },
@@ -147,7 +166,7 @@ async function uploadListOfAssets(client, observer = MOCK_OBSERVER) {
     })
   );
 
-  const { done, failed } = await uploadAssets(client, filtered, observer);
+  const { done, failed } = await uploadAssets(client, assets, observer);
   await Promise.all([
     fs.writeJson(DONE_FILE_PATH, done, { spaces: 2 }),
     fs.writeJson(FAILED_FILE_PATH, failed, { spaces: 2 }),
@@ -158,3 +177,11 @@ module.exports = (client) =>
   new Observable((observer) =>
     uploadListOfAssets(client, observer).then(() => observer.complete())
   );
+
+// debug
+// (async () => {
+//   const client = await require("./create-client")();
+//   uploadListOfAssets(client)
+//     .then(console.log)
+//     .catch(console.log);
+// })();

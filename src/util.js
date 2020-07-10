@@ -4,6 +4,7 @@ const path = require("path");
 const glob = require("glob");
 const remark = require("remark");
 const TurndownService = require("turndown");
+const md = require("to-markdown");
 const { richTextFromMarkdown } = require("@contentful/rich-text-from-markdown");
 
 // when task is ran as singular node process and not as Listr task
@@ -115,8 +116,30 @@ const htmlToMarkdown = (content) => {
   });
 };
 
-const htmlToRichText = async (content) =>
-  await richTextFromMarkdown(await htmlToMarkdown(content));
+const htmlToRichText = async (content) => {
+  const text = await richTextFromMarkdown(
+    await md(content, { gfm: true }),
+    async (node) => {
+      switch (node.value) {
+        case "<sup>":
+        case "</sup>":
+        case "<sub>":
+        case "</sub>":
+          return {
+            nodeType: "text",
+            value: node.value,
+            marks: [],
+            data: {},
+          };
+      }
+    }
+  );
+
+  return text;
+};
+// await richTextFromMarkdown(await md(content, { gfm: true }), async (node) => {
+//   console.log(node);
+// });
 
 // exportz
 module.exports = {

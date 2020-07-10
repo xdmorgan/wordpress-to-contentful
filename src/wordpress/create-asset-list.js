@@ -25,7 +25,13 @@ const listOfImagesByPost = async (post, url) => {
       images.push({
         mediaNumber,
         link: json.guid.rendered,
-        title: json.title.rendered || "",
+        title:
+          json.title.rendered ||
+          json.guid.rendered.replace(
+            "http://media-centre.uswitchinternal.com",
+            "https://www.uswitch.com/media-centre"
+          ) ||
+          "",
         description: json.alt_text || "",
         postId,
       });

@@ -41,7 +41,8 @@ const extractImages = (post) => {
 function convertToMarkdown(post) {
   return {
     ...post,
-    body: turndownService.turndown(post.body),
+    // body: turndownService.turndown(post.body),
+    body: post.body,
   };
 }
 
@@ -132,3 +133,5 @@ const transformByPage = async (observer = MOCK_OBSERVER) => {
 };
 
 module.exports = () => new Observable((observer) => transformByPage(observer));
+
+transformByPage();
