@@ -62,10 +62,6 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
     const processing = new Set();
     const done = [];
     const failed = [];
-    // let hero,
-    //   body,
-    //   pressRelease,
-    //   notesToEditors = {};
 
     const logProgress = () => {
       observer.next(
@@ -198,27 +194,18 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
       });
     };
 
-    const createCategory = (post) => {
-      return Promise.race([
+    const handleCategoryCreation = async (category) => {
+      return await Promise.race([
         new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
         new Promise(async (resolve, reject) => {
           await delay();
-
-          const category = Object.values(await CATEGORIES).find(
-            (category) => category.id === post.category
-          );
 
           const exists = await client.getEntries({
             content_type: CATEGORY_TYPE,
             "fields.name[in]": category.name,
           });
 
-          if (exists && exists.total > 0) {
-            return reject({
-              error: "Category Tag already exists",
-              category: exists,
-            });
-          }
+          if (exists && exists.total > 0) resolve(exists.items[0]);
 
           await delay();
 
@@ -229,10 +216,28 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
               },
             },
           });
+
           await delay();
+
           const published = await created.publish();
-          await delay();
           resolve(published);
+        }),
+      ]);
+    };
+
+    const createCategory = async (post) => {
+      return Promise.race([
+        new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
+        new Promise(async (resolve, reject) => {
+          await delay();
+
+          const categories = Object.values(await CATEGORIES).filter(
+            (category) => post.category.includes(category.id)
+          );
+
+          await delay();
+
+          resolve(await Promise.all(categories.map(handleCategoryCreation)));
         }),
       ]).catch((error) => {
         // TODO: retry failed
@@ -278,13 +283,6 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
       return Promise.race([
         new Promise((_, reject) => setTimeout(reject, UPLOAD_TIMEOUT)),
         new Promise(async (resolve, reject) => {
-          // console.log(
-          //   post.body
-          //     .replace(/\\n/g, "")
-          //     .replace(/\\t/g, "")
-          //     .split("\n")
-          //     .join("")
-          // );
           const content = await richTextFromMarkdown(
             md(
               replaceInlineImageUrls(
@@ -574,7 +572,6 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
             await delay();
 
             const category = await createCategory(post);
-
             await delay();
             const url = await client.createEntry(URL_TYPE, {
               fields: {
@@ -783,11 +780,8 @@ async function processBlogPosts(client, observer = MOCK_OBSERVER) {
   const assets = await fs.readJson(DONE_FILE_PATH);
   const authors = await fs.readJson(AUTHOR_FILE_PATH);
 
-  // 8004
-
   const result = await createBlogPosts(
-    // posts,
-    posts.filter((post) => post.id === 5346),
+    posts,
     assets,
     authors,
     client,

@@ -75,7 +75,7 @@ const transform = (post) => {
   delete post.content;
   post.title = html2plaintext(replaceUswitch(post.title.rendered)); // decode entities
   post.slug = post.slug;
-  post.category = post.categories[0];
+  post.category = post.categories;
   delete post.categories;
   return [post.slug, convertToMarkdown(extractImages(post))];
 };
@@ -134,4 +134,4 @@ const transformByPage = async (observer = MOCK_OBSERVER) => {
 
 module.exports = () => new Observable((observer) => transformByPage(observer));
 
-// transformByPage();
+transformByPage();
