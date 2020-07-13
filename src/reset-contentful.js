@@ -173,7 +173,24 @@ async function deleteAssets(client, observer = MOCK_OBSERVER, skip = 0) {
   }
 }
 
+async function renameCategories(client, observer = MOCK_OBSERVER) {
+  const categories = await client.getEntries({
+    content_type: "categoryTag",
+    "sys.createdBy.sys.id": CONTENTFUL_FALLBACK_USER_ID,
+  });
+
+  categories.items.forEach(async (category) => {
+    category.fields.name[CONTENTFUL_LOCALE] = `Media Centre ${
+      category.fields.name[CONTENTFUL_LOCALE]
+    }`;
+    await category.update();
+  });
+
+  console.log(categories);
+  // categories.items.forEach(console.log);
+}
+
 (async () => {
   const client = await require("./contentful/create-client")();
-  getEntries(client).then(console.log);
+  renameCategories(client).then(console.log);
 })();

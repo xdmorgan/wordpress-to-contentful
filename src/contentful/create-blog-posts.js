@@ -200,27 +200,32 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
         new Promise(async (resolve, reject) => {
           await delay();
 
+          const name = `Media Centre ${category.name}`;
+
           const exists = await client.getEntries({
             content_type: CATEGORY_TYPE,
-            "fields.name[in]": category.name,
+            "fields.name[in]": name,
           });
+
+          console.log("exists - ", category.name);
 
           if (exists && exists.total > 0) resolve(exists.items[0]);
+          else {
+            await delay();
 
-          await delay();
-
-          const created = await client.createEntry(CATEGORY_TYPE, {
-            fields: {
-              name: {
-                [CONTENTFUL_LOCALE]: category.name,
+            const created = await client.createEntry(CATEGORY_TYPE, {
+              fields: {
+                name: {
+                  [CONTENTFUL_LOCALE]: name,
+                },
               },
-            },
-          });
+            });
 
-          await delay();
+            await delay();
 
-          const published = await created.publish();
-          resolve(published);
+            const published = await created.publish();
+            resolve(published);
+          }
         }),
       ]);
     };
@@ -571,7 +576,7 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
             const published = await created.publish();
             await delay();
 
-            const category = await createCategory(post);
+            const categories = await createCategory(post);
             await delay();
             const url = await client.createEntry(URL_TYPE, {
               fields: {
@@ -593,13 +598,13 @@ const createBlogPosts = (posts, assets, authors, client, observer) => {
                 },
                 categories: {
                   [CONTENTFUL_LOCALE]: [
-                    {
+                    ...categories.map((category) => ({
                       sys: {
                         type: "Link",
                         linkType: "Entry",
                         id: category.sys.id,
                       },
-                    },
+                    })),
                     {
                       sys: {
                         type: "Link",
@@ -781,7 +786,7 @@ async function processBlogPosts(client, observer = MOCK_OBSERVER) {
   const authors = await fs.readJson(AUTHOR_FILE_PATH);
 
   const result = await createBlogPosts(
-    posts,
+    posts.filter((post) => post.id === 6807),
     assets,
     authors,
     client,
@@ -800,7 +805,7 @@ module.exports = (client) => {
 };
 
 // debug
-// (async () => {
-//   const client = await require("./create-client")();
-//   processBlogPosts(client).then(console.log);
-// })();
+(async () => {
+  const client = await require("./create-client")();
+  processBlogPosts(client).then(console.log);
+})();
